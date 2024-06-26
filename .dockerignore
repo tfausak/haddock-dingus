@@ -1,0 +1,4 @@
+.gitignore
+cabal.project.*
+dist-newstyle/
+fly.toml
