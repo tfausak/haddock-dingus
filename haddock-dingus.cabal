@@ -1,0 +1,24 @@
+cabal-version: 3.8
+name: haddock-dingus
+version: 0.2024.6.26
+
+executable haddock-dingus
+  build-depends:
+    base,
+    haddock-library,
+    lucid2,
+    random,
+    scotty,
+    sqlite-simple,
+    text,
+    wai-extra,
+  ghc-options:
+    -rtsopts
+    -threaded
+    -Weverything
+    -Wno-all-missed-specialisations
+    -Wno-implicit-prelude
+    -Wno-missing-safe-haskell-mode
+    -Wno-prepositive-qualified-module
+    -Wno-unsafe
+  main-is: Main.hs
