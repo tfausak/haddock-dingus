@@ -1,17 +1,31 @@
 cabal-version: 3.8
 name: haddock-dingus
 version: 0.2024.6.26
+synopsis: Easily preview Haddock markup.
+description:
+  Haddock Dingus easily previews Haddock markup.
+
+category: Documentation
+extra-doc-files: README.md
+license-file: LICENSE.txt
+license: MIT
+maintainer: Taylor Fausak
+
+source-repository head
+  type: git
+  location: https://github.com/tfausak/haddock-dingus
 
 executable haddock-dingus
   build-depends:
-    base,
-    haddock-library,
-    lucid2,
-    random,
-    scotty,
-    sqlite-simple,
-    text,
-    wai-extra,
+    base ^>=4.20.0.0,
+    haddock-library ^>=1.11.0,
+    lucid2 ^>=0.0.20240424,
+    random ^>=1.2.1.2,
+    scotty ^>=0.22,
+    sqlite-simple ^>=0.4.19.0,
+    text ^>=2.1.1,
+    wai-extra ^>=3.1.15,
+
   ghc-options:
     -rtsopts
     -threaded
@@ -21,4 +35,5 @@ executable haddock-dingus
     -Wno-missing-safe-haskell-mode
     -Wno-prepositive-qualified-module
     -Wno-unsafe
+
   main-is: Main.hs
