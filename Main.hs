@@ -27,13 +27,13 @@ main = do
 
   Warp.runSettings settings $ \request respond ->
     case (Wai.requestMethod request, Wai.pathInfo request) of
-      ("GET", []) -> respond $ Wai.responseLBS Http.found302 [(Http.hLocation, "/inputs/0")] LazyByteString.empty
+      ("GET", []) -> respond $ statusResponse Http.found302 [(Http.hLocation, "/inputs/0")]
       ("POST", ["inputs"]) -> do
         body <- Wai.strictRequestBody request
         let input = maybe Text.empty Encoding.decodeUtf8Lenient . Monad.join . lookup "input" . Http.parseQuery $ LazyByteString.toStrict body
             key = Hashable.hash input
         Stm.atomically . Stm.modifyTVar inputsVar $ IntMap.insert key input
-        respond $ Wai.responseLBS Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ "/inputs/" <> show key)] LazyByteString.empty
+        respond $ statusResponse Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ "/inputs/" <> show key)]
       ("GET", ["inputs", rawKey]) -> do
         let key = Maybe.fromMaybe 0 . Read.readMaybe $ Text.unpack rawKey :: Int
         inputs <- Stm.readTVarIO inputsVar
@@ -90,7 +90,19 @@ main = do
                   H.a_
                     [H.class_ "link-secondary", H.href_ "https://haskell-haddock.readthedocs.io/latest/"]
                     "haskell-haddock.readthedocs.io"
-      _ -> respond $ Wai.responseLBS Http.status404 [] "Not found"
+      _ -> respond $ statusResponse Http.status404 []
+
+statusResponse :: Http.Status -> Http.ResponseHeaders -> Wai.Response
+statusResponse status headers =
+  Wai.responseLBS
+    status
+    ((Http.hContentType, "text/plain;charset=utf-8") : headers)
+    . LazyByteString.fromStrict
+    . (\bs -> bs <> " " <> Http.statusMessage status)
+    . Encoding.encodeUtf8
+    . Text.pack
+    . show
+    $ Http.statusCode status
 
 settings :: Warp.Settings
 settings =
@@ -127,7 +139,7 @@ htmlMarkup =
       Haddock.markupEmpty = mempty,
       Haddock.markupExample = foldMap $ \x -> H.pre_ . H.code_ . H.toHtml . List.intercalate "\n" $ (">>> " <> Haddock.exampleExpression x) : Haddock.exampleResult x,
       Haddock.markupHeader = \x -> H.term (Text.pack $ "h" <> show (Haddock.headerLevel x)) $ Haddock.headerTitle x,
-      Haddock.markupHyperlink = \x -> let url = Text.pack $ Haddock.hyperlinkUrl x in H.a_ [H.href_ url] . Maybe.fromMaybe (H.toHtml url) $ Haddock.hyperlinkLabel x,
+      Haddock.markupHyperlink = \x -> let url = Text.pack $ Haddock.hyperlinkUrl x in H.a_ [H.href_ url, H.rel_ "nofollow"] . Maybe.fromMaybe (H.toHtml url) $ Haddock.hyperlinkLabel x,
       Haddock.markupIdentifier = H.code_ . H.toHtml . snd,
       Haddock.markupIdentifierUnchecked = Void.absurd,
       Haddock.markupMathDisplay = \x -> H.div_ . H.toHtml $ "\\[" <> x <> "\\]",

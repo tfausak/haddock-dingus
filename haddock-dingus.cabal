@@ -21,7 +21,7 @@ executable haddock-dingus
     bytestring ^>=0.12.1.0,
     containers ^>=0.7,
     haddock-library ^>=1.11.0,
-    hashable ^>=1.4.6.0,
+    hashable ^>=1.4.7.0,
     http-types ^>=0.12.4,
     lucid2 ^>=0.0.20240424,
     stm ^>=2.5.3.1,
