@@ -8,7 +8,6 @@ RUN \
   cp $( cabal list-bin haddock-dingus ) .
 
 FROM scratch
-ENV PORT=3000
 EXPOSE 3000
 COPY --from=0 /work/haddock-dingus /
 CMD ["/haddock-dingus"]

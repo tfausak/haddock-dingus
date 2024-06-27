@@ -3,9 +3,10 @@
 import qualified Control.Concurrent.STM as Stm
 import qualified Control.Monad as Monad
 import qualified Data.ByteString.Lazy as LazyByteString
+import Data.Function ((&))
 import qualified Data.Hashable as Hashable
+import qualified Data.IntMap as IntMap
 import qualified Data.List as List
-import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Encoding
@@ -17,28 +18,26 @@ import qualified Lucid as H
 import qualified Network.HTTP.Types as Http
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
-import qualified System.Environment as Environment
 import qualified Text.Printf as Printf
 import qualified Text.Read as Read
 
 main :: IO ()
 main = do
-  inputsVar <- Stm.newTVarIO . Map.singleton 0 . Text.pack $ unlines sample
-  port <- maybe 3000 read <$> Environment.lookupEnv "PORT"
+  inputsVar <- Stm.newTVarIO $ IntMap.singleton 0 sample
 
-  Warp.run port . loggingMiddleware $ \request respond ->
+  Warp.runSettings settings $ \request respond ->
     case (Wai.requestMethod request, Wai.pathInfo request) of
       ("GET", []) -> respond $ Wai.responseLBS Http.found302 [(Http.hLocation, "/inputs/0")] LazyByteString.empty
       ("POST", ["inputs"]) -> do
         body <- Wai.strictRequestBody request
         let input = maybe Text.empty Encoding.decodeUtf8Lenient . Monad.join . lookup "input" . Http.parseQuery $ LazyByteString.toStrict body
             key = Hashable.hash input
-        Stm.atomically . Stm.modifyTVar inputsVar $ Map.insert key input
+        Stm.atomically . Stm.modifyTVar inputsVar $ IntMap.insert key input
         respond $ Wai.responseLBS Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ "/inputs/" <> show key)] LazyByteString.empty
       ("GET", ["inputs", rawKey]) -> do
         let key = Maybe.fromMaybe 0 . Read.readMaybe $ Text.unpack rawKey :: Int
         inputs <- Stm.readTVarIO inputsVar
-        let contents = Map.findWithDefault "Not found!" key inputs
+        let contents = IntMap.findWithDefault "Not found!" key inputs
         respond
           . Wai.responseLBS Http.ok200 [(Http.hContentType, "text/html;charset=utf-8")]
           . H.renderBS
@@ -93,16 +92,28 @@ main = do
                     "haskell-haddock.readthedocs.io"
       _ -> respond $ Wai.responseLBS Http.status404 [] "Not found"
 
-loggingMiddleware :: Wai.Middleware
-loggingMiddleware handle request respond = do
-  handle request $ \response -> do
-    Printf.printf
-      "%d %s %s %s\n"
-      (Http.statusCode $ Wai.responseStatus response)
-      (Encoding.decodeUtf8Lenient $ Wai.requestMethod request)
-      (Encoding.decodeUtf8Lenient $ Wai.rawPathInfo request)
-      (Encoding.decodeUtf8Lenient $ Wai.rawQueryString request)
-    respond response
+settings :: Warp.Settings
+settings =
+  let host = "*" :: Warp.HostPreference
+      port = 3000 :: Warp.Port
+   in Warp.defaultSettings
+        & Warp.setBeforeMainLoop
+          ( Printf.printf
+              "Listening on %s port %d\n"
+              (show host)
+              port
+          )
+        & Warp.setHost host
+        & Warp.setLogger
+          ( \request status _ ->
+              Printf.printf
+                "%d %s %s %s\n"
+                (Http.statusCode status)
+                (Encoding.decodeUtf8Lenient $ Wai.requestMethod request)
+                (Encoding.decodeUtf8Lenient $ Wai.rawPathInfo request)
+                (Encoding.decodeUtf8Lenient $ Wai.rawQueryString request)
+          )
+        & Warp.setPort port
 
 htmlMarkup :: Haddock.DocMarkupH Void.Void (Haddock.Namespace, String) (H.Html ())
 htmlMarkup =
@@ -133,83 +144,85 @@ htmlMarkup =
       Haddock.markupWarning = error "markupWarning (impossible)"
     }
 
-sample :: [String]
+sample :: Text.Text
 sample =
-  [ "= Haddock Markup",
-    "",
-    "This sample is meant to showcase many of Haddock's common features. It is not meant to be exhaustive.",
-    "",
-    "Please edit this text and re-submit the form!",
-    "",
-    "== Inline Formatting",
-    "",
-    "Some /italic/ text.",
-    "",
-    "Some __bold__ text.",
-    "",
-    "Some @mono@ text.",
-    "",
-    "A <http://example.com> link.",
-    "",
-    "Another [hyper](http://example.com) link.",
-    "",
-    "An ![logo](https://haskell.foundation/assets/images/logos/hf-logo-100-alpha.png) image.",
-    "",
-    "== Block Formatting",
-    "",
-    "Headings are used throughout this example, from @= h1@ to @====== h6@.",
-    "",
-    "- unordered",
-    "- list",
-    "",
-    "1. ordered",
-    "2. list",
-    "",
-    "[d] definition",
-    "[l] list",
-    "",
-    "@",
-    "formatted",
-    "  /code/ __block__",
-    "@",
-    "",
-    "> unformatted",
-    ">   /code/ __block__",
-    "",
-    "== Haskell",
-    "",
-    ">>> negate 1 -- GHCi example",
-    "-1",
-    "",
-    "prop> a + b = b + a -- property",
-    "",
-    "Module \"Data.Maybe\" name.",
-    "",
-    "Qualified 'Data.Maybe.Maybe' type.",
-    "",
-    "Unqualified 'Maybe' type.",
-    "",
-    "Qualified 'Data.Maybe.fromMaybe' term.",
-    "",
-    "Unqualified 'maybe' term.",
-    "",
-    "(When using Haddock for real, the above modules, types, terms would be hyperlinked if they can be resolved.)",
-    "",
-    "== Math",
-    "",
-    "Inline \\( ax^2 + bx + c = 0 \\) math.",
-    "",
-    "Display math: \\[ x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a} \\]",
-    "",
-    "== Extra",
-    "",
-    "You won't be able to see it, but this will add an @\\<a name=\"anchor\"\\>@ element that can be used to link to specific pieces of content.",
-    "",
-    "#anchor#",
-    "",
-    "Anything can be \\'escaped\\' with backslashes, even \\ backslashes. Escaping works even when it's not \\\"necessary\\\".",
-    "",
-    "Most markup /can @be __nested__@/.",
-    "",
-    "Tables don't seem to work here."
-  ]
+  Text.pack $
+    unlines
+      [ "= Haddock Markup",
+        "",
+        "This sample is meant to showcase many of Haddock's common features. It is not meant to be exhaustive.",
+        "",
+        "Please edit this text and re-submit the form!",
+        "",
+        "== Inline Formatting",
+        "",
+        "Some /italic/ text.",
+        "",
+        "Some __bold__ text.",
+        "",
+        "Some @mono@ text.",
+        "",
+        "A <http://example.com> link.",
+        "",
+        "Another [hyper](http://example.com) link.",
+        "",
+        "An ![logo](https://haskell.foundation/assets/images/logos/hf-logo-100-alpha.png) image.",
+        "",
+        "== Block Formatting",
+        "",
+        "Headings are used throughout this example, from @= h1@ to @====== h6@.",
+        "",
+        "- unordered",
+        "- list",
+        "",
+        "1. ordered",
+        "2. list",
+        "",
+        "[d] definition",
+        "[l] list",
+        "",
+        "@",
+        "formatted",
+        "  /code/ __block__",
+        "@",
+        "",
+        "> unformatted",
+        ">   /code/ __block__",
+        "",
+        "== Haskell",
+        "",
+        ">>> negate 1 -- GHCi example",
+        "-1",
+        "",
+        "prop> a + b = b + a -- property",
+        "",
+        "Module \"Data.Maybe\" name.",
+        "",
+        "Qualified 'Data.Maybe.Maybe' type.",
+        "",
+        "Unqualified 'Maybe' type.",
+        "",
+        "Qualified 'Data.Maybe.fromMaybe' term.",
+        "",
+        "Unqualified 'maybe' term.",
+        "",
+        "(When using Haddock for real, the above modules, types, terms would be hyperlinked if they can be resolved.)",
+        "",
+        "== Math",
+        "",
+        "Inline \\( ax^2 + bx + c = 0 \\) math.",
+        "",
+        "Display math: \\[ x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a} \\]",
+        "",
+        "== Extra",
+        "",
+        "You won't be able to see it, but this will add an @\\<a name=\"anchor\"\\>@ element that can be used to link to specific pieces of content.",
+        "",
+        "#anchor#",
+        "",
+        "Anything can be \\'escaped\\' with backslashes, even \\ backslashes. Escaping works even when it's not \\\"necessary\\\".",
+        "",
+        "Most markup /can @be __nested__@/.",
+        "",
+        "Tables don't seem to work here."
+      ]
