@@ -239,7 +239,7 @@ sample =
         "",
         "#anchor#",
         "",
-        "Anything can be \\'escaped\\' with backslashes, even \\ backslashes. Escaping works even when it's not \\\"necessary\\\".",
+        "Anything can be \\'escaped\\' with backslashes, even \\\\ backslashes. Escaping works even when it's not \\\"necessary\\\".",
         "",
         "Most markup /can @be __nested__@/.",
         "",
