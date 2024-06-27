@@ -18,14 +18,15 @@ source-repository head
 executable haddock-dingus
   build-depends:
     base ^>=4.20.0.0,
+    bytestring ^>=0.12.1.0,
     haddock-library ^>=1.11.0,
     http-types ^>=0.12.4,
     lucid2 ^>=0.0.20240424,
     random ^>=1.2.1.2,
-    scotty ^>=0.22,
     sqlite-simple ^>=0.4.19.0,
     text ^>=2.1.1,
     wai ^>=3.2.4,
+    warp ^>=3.4.1,
 
   ghc-options:
     -rtsopts

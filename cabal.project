@@ -1,12 +1,4 @@
 packages: .
-
 allow-newer:
   -- https://github.com/chrisdone/lucid/issues/151
   lucid2:base,
-
--- https://github.com/kazu-yamamoto/logger/commit/cc1ec1d8e6700b66b1b1c037694e962311d165b8
-source-repository-package
-  type: git
-  location: https://github.com/kazu-yamamoto/logger
-  tag: 57bc4d3b26ca094fd0c3a8a8bb4421bcdcdd7061
-  subdir: wai-logger
