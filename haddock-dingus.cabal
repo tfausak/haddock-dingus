@@ -1,6 +1,6 @@
 cabal-version: 3.8
 name: haddock-dingus
-version: 0.2024.6.26
+version: 0.2024.6.27
 synopsis: Easily preview Haddock markup.
 description:
   Haddock Dingus easily previews Haddock markup.
@@ -16,6 +16,7 @@ source-repository head
   location: https://github.com/tfausak/haddock-dingus
 
 executable haddock-dingus
+  autogen-modules: Paths_haddock_dingus
   build-depends:
     base ^>=4.20.0.0,
     bytestring ^>=0.12.1.0,
@@ -40,3 +41,4 @@ executable haddock-dingus
     -Wno-unsafe
 
   main-is: Main.hs
+  other-modules: Paths_haddock_dingus

@@ -10,6 +10,7 @@ import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Encoding
+import qualified Data.Version as Version
 import qualified Data.Void as Void
 import qualified Documentation.Haddock.Markup as Haddock
 import qualified Documentation.Haddock.Parser as Haddock
@@ -18,6 +19,7 @@ import qualified Lucid as H
 import qualified Network.HTTP.Types as Http
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
+import qualified Paths_haddock_dingus as Package
 import qualified System.IO as IO
 import qualified Text.Printf as Printf
 import qualified Text.Read as Read
@@ -35,9 +37,9 @@ main = do
         let input = maybe Text.empty Encoding.decodeUtf8Lenient . Monad.join . lookup "input" . Http.parseQuery $ LazyByteString.toStrict body
             key = Hashable.hash input
         Stm.atomically . Stm.modifyTVar inputsVar $ IntMap.insert key input
-        respond $ statusResponse Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ "/inputs/" <> show key)]
+        respond $ statusResponse Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ Printf.printf "/inputs/%x" key)]
       ("GET", ["inputs", rawKey]) -> do
-        let key = Maybe.fromMaybe 0 . Read.readMaybe $ Text.unpack rawKey :: Int
+        let key = Maybe.fromMaybe 0 . Read.readMaybe . mappend "0x" $ Text.unpack rawKey :: Int
         inputs <- Stm.readTVarIO inputsVar
         let contents = IntMap.findWithDefault "Not found!" key inputs
         respond
@@ -89,9 +91,12 @@ main = do
                         $ Text.unpack contents
               H.footer_ [H.class_ "my-3 text-secondary"] $ do
                 H.div_ [H.class_ "border-top container pt-3"] $ do
-                  H.a_
-                    [H.class_ "link-secondary", H.href_ "https://haskell-haddock.readthedocs.io/latest/"]
-                    "haskell-haddock.readthedocs.io"
+                  "Powered by "
+                  H.a_ [H.class_ "link-secondary", H.href_ "https://github.com/tfausak/haddock-dingus"] $ do
+                    "tfausak/haddock-dingus"
+                  " version "
+                  H.toHtml $ Version.showVersion Package.version
+                  "."
       _ -> respond $ statusResponse Http.status404 []
 
 statusResponse :: Http.Status -> Http.ResponseHeaders -> Wai.Response
@@ -164,9 +169,9 @@ sample =
     unlines
       [ "= Haddock Markup",
         "",
-        "This sample is meant to showcase many of Haddock's common features. It is not meant to be exhaustive.",
+        "This sample is meant to showcase many of Haddock's common features. It is not meant to be exhaustive. Consult [Haddock's documentation](https://haskell-haddock.readthedocs.io/latest/) for more information.",
         "",
-        "Please edit this text and re-submit the form!",
+        "Feel free to edit this text and re-submit the form to see what it looks like! The generated links will survive until the server reboots.",
         "",
         "== Inline Formatting",
         "",
