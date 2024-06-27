@@ -18,11 +18,13 @@ import qualified Lucid as H
 import qualified Network.HTTP.Types as Http
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
+import qualified System.IO as IO
 import qualified Text.Printf as Printf
 import qualified Text.Read as Read
 
 main :: IO ()
 main = do
+  IO.hSetBuffering IO.stdout IO.LineBuffering
   inputsVar <- Stm.newTVarIO $ IntMap.singleton 0 sample
 
   Warp.runSettings settings $ \request respond ->
