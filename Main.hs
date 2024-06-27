@@ -3,6 +3,7 @@
 import qualified Control.Concurrent.STM as Stm
 import qualified Control.Monad as Monad
 import qualified Data.ByteString.Lazy as LazyByteString
+import qualified Data.Hashable as Hashable
 import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
@@ -17,13 +18,12 @@ import qualified Network.HTTP.Types as Http
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified System.Environment as Environment
-import qualified System.Random as Random
 import qualified Text.Printf as Printf
 import qualified Text.Read as Read
 
 main :: IO ()
 main = do
-  inputsVar <- Stm.newTVarIO . Map.singleton (0 :: Int) . Text.pack $ unlines sample
+  inputsVar <- Stm.newTVarIO . Map.singleton 0 . Text.pack $ unlines sample
   port <- maybe 3000 read <$> Environment.lookupEnv "PORT"
 
   Warp.run port . loggingMiddleware $ \request respond ->
@@ -32,7 +32,7 @@ main = do
       ("POST", ["inputs"]) -> do
         body <- Wai.strictRequestBody request
         let input = maybe Text.empty Encoding.decodeUtf8Lenient . Monad.join . lookup "input" . Http.parseQuery $ LazyByteString.toStrict body
-        key <- Random.randomRIO (1, maxBound :: Int)
+            key = Hashable.hash input
         Stm.atomically . Stm.modifyTVar inputsVar $ Map.insert key input
         respond $ Wai.responseLBS Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ "/inputs/" <> show key)] LazyByteString.empty
       ("GET", ["inputs", rawKey]) -> do
