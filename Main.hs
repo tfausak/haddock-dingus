@@ -1,13 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import qualified Control.Concurrent.STM as Stm
 import qualified Control.Monad as Monad
 import qualified Data.ByteString.Lazy as LazyByteString
 import qualified Data.List as List
+import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Encoding
 import qualified Data.Void as Void
-import qualified Database.SQLite.Simple as Sql
 import qualified Documentation.Haddock.Markup as Haddock
 import qualified Documentation.Haddock.Parser as Haddock
 import qualified Documentation.Haddock.Types as Haddock
@@ -22,88 +23,75 @@ import qualified Text.Read as Read
 
 main :: IO ()
 main = do
-  db <- Maybe.fromMaybe ":memory:" <$> Environment.lookupEnv "DATABASE"
+  inputsVar <- Stm.newTVarIO . Map.singleton (0 :: Int) . Text.pack $ unlines sample
   port <- maybe 3000 read <$> Environment.lookupEnv "PORT"
 
-  Sql.withConnection db $ \sql -> do
-    Sql.execute_
-      sql
-      "create table Input (key integer primary key, contents text not null)"
-    Sql.execute sql "insert into Input (key, contents) values (0, ?)"
-      . Sql.Only
-      $ unlines sample
-
-    Warp.run port . loggingMiddleware $ \request respond ->
-      case (Wai.requestMethod request, Wai.pathInfo request) of
-        ("GET", []) -> respond $ Wai.responseLBS Http.found302 [(Http.hLocation, "/inputs/0")] LazyByteString.empty
-        ("POST", ["inputs"]) -> do
-          body <- Wai.strictRequestBody request
-          let input = maybe Text.empty Encoding.decodeUtf8Lenient . Monad.join . lookup "input" . Http.parseQuery $ LazyByteString.toStrict body
-          key <- Random.randomRIO (1, maxBound :: Int)
-          Sql.execute sql "insert into Input (key, contents) values (?, ?)" (key, input :: Text.Text)
-          respond $ Wai.responseLBS Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ "/inputs/" <> show key)] LazyByteString.empty
-        ("GET", ["inputs", rawKey]) -> do
-          let key = Maybe.fromMaybe 0 . Read.readMaybe $ Text.unpack rawKey :: Int
-          rows <-
-            Sql.query
-              sql
-              "select contents from Input where key = ?"
-              [key]
-          let contents = case rows of
-                [] -> "Not found!"
-                row : _ -> Sql.fromOnly row
-          respond
-            . Wai.responseLBS Http.ok200 [(Http.hContentType, "text/html;charset=utf-8")]
-            . H.renderBS
-            . H.doctypehtml_
-            $ do
-              H.head_ $ do
-                H.title_ "Haddock Dingus"
-                H.link_
-                  [ H.crossorigin_ "anonymous",
-                    H.href_ "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
-                    H.integrity_ "sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",
-                    H.rel_ "stylesheet"
-                  ]
-                H.script_
-                  [ H.async_ "",
-                    H.crossorigin_ "anonymous",
-                    H.id_ "MathJax-script",
-                    H.integrity_ "sha384-Wuix6BuhrWbjDBs24bXrjf4ZQ5aFeFWBuKkFekO2t8xFU0iNaLQfp2K6/1Nxveei",
-                    H.src_ "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
-                  ]
-                  Text.empty
-              H.body_ $ do
-                H.header_ [H.class_ "bg-dark mb-3 navbar"] $ do
-                  H.div_ [H.class_ "container"] $ do
-                    H.a_ [H.class_ "navbar-brand text-light", H.href_ "/"] "Haddock Dingus"
-                H.main_ [H.class_ "my-3"] $ do
-                  H.div_ [H.class_ "container"] $ do
-                    H.div_ [H.class_ "row"] $ do
-                      H.div_ [H.class_ "col-lg mb-3"] $ do
-                        H.h2_ "Input"
-                        H.form_ [H.action_ "/inputs", H.method_ "post"] $ do
-                          H.textarea_
-                            [ H.class_ "font-monospace form-control mb-3",
-                              H.name_ "input",
-                              H.rows_ "10"
-                            ]
-                            $ H.toHtml contents
-                          H.button_ [H.class_ "btn btn-primary", H.type_ "submit"] "Submit"
-                      H.div_ [H.class_ "col-lg"] $ do
-                        H.h2_ "Output"
-                        H.div_ [H.class_ "card"]
-                          . H.section_ [H.class_ "card-body"]
-                          . Haddock.markup htmlMarkup
-                          . Haddock.overIdentifier (curry Just)
-                          . Haddock._doc
-                          $ Haddock.parseParas Nothing contents
-                H.footer_ [H.class_ "my-3 text-secondary"] $ do
-                  H.div_ [H.class_ "border-top container pt-3"] $ do
-                    H.a_
-                      [H.class_ "link-secondary", H.href_ "https://haskell-haddock.readthedocs.io/latest/"]
-                      "haskell-haddock.readthedocs.io"
-        _ -> respond $ Wai.responseLBS Http.status404 [] "Not found"
+  Warp.run port . loggingMiddleware $ \request respond ->
+    case (Wai.requestMethod request, Wai.pathInfo request) of
+      ("GET", []) -> respond $ Wai.responseLBS Http.found302 [(Http.hLocation, "/inputs/0")] LazyByteString.empty
+      ("POST", ["inputs"]) -> do
+        body <- Wai.strictRequestBody request
+        let input = maybe Text.empty Encoding.decodeUtf8Lenient . Monad.join . lookup "input" . Http.parseQuery $ LazyByteString.toStrict body
+        key <- Random.randomRIO (1, maxBound :: Int)
+        Stm.atomically . Stm.modifyTVar inputsVar $ Map.insert key input
+        respond $ Wai.responseLBS Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ "/inputs/" <> show key)] LazyByteString.empty
+      ("GET", ["inputs", rawKey]) -> do
+        let key = Maybe.fromMaybe 0 . Read.readMaybe $ Text.unpack rawKey :: Int
+        inputs <- Stm.readTVarIO inputsVar
+        let contents = Map.findWithDefault "Not found!" key inputs
+        respond
+          . Wai.responseLBS Http.ok200 [(Http.hContentType, "text/html;charset=utf-8")]
+          . H.renderBS
+          . H.doctypehtml_
+          $ do
+            H.head_ $ do
+              H.title_ "Haddock Dingus"
+              H.link_
+                [ H.crossorigin_ "anonymous",
+                  H.href_ "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
+                  H.integrity_ "sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",
+                  H.rel_ "stylesheet"
+                ]
+              H.script_
+                [ H.async_ "",
+                  H.crossorigin_ "anonymous",
+                  H.id_ "MathJax-script",
+                  H.integrity_ "sha384-Wuix6BuhrWbjDBs24bXrjf4ZQ5aFeFWBuKkFekO2t8xFU0iNaLQfp2K6/1Nxveei",
+                  H.src_ "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
+                ]
+                Text.empty
+            H.body_ $ do
+              H.header_ [H.class_ "bg-dark mb-3 navbar"] $ do
+                H.div_ [H.class_ "container"] $ do
+                  H.a_ [H.class_ "navbar-brand text-light", H.href_ "/"] "Haddock Dingus"
+              H.main_ [H.class_ "my-3"] $ do
+                H.div_ [H.class_ "container"] $ do
+                  H.div_ [H.class_ "row"] $ do
+                    H.div_ [H.class_ "col-lg mb-3"] $ do
+                      H.h2_ "Input"
+                      H.form_ [H.action_ "/inputs", H.method_ "post"] $ do
+                        H.textarea_
+                          [ H.class_ "font-monospace form-control mb-3",
+                            H.name_ "input",
+                            H.rows_ "10"
+                          ]
+                          $ H.toHtml contents
+                        H.button_ [H.class_ "btn btn-primary", H.type_ "submit"] "Submit"
+                    H.div_ [H.class_ "col-lg"] $ do
+                      H.h2_ "Output"
+                      H.div_ [H.class_ "card"]
+                        . H.section_ [H.class_ "card-body"]
+                        . Haddock.markup htmlMarkup
+                        . Haddock.overIdentifier (curry Just)
+                        . Haddock._doc
+                        . Haddock.parseParas Nothing
+                        $ Text.unpack contents
+              H.footer_ [H.class_ "my-3 text-secondary"] $ do
+                H.div_ [H.class_ "border-top container pt-3"] $ do
+                  H.a_
+                    [H.class_ "link-secondary", H.href_ "https://haskell-haddock.readthedocs.io/latest/"]
+                    "haskell-haddock.readthedocs.io"
+      _ -> respond $ Wai.responseLBS Http.status404 [] "Not found"
 
 loggingMiddleware :: Wai.Middleware
 loggingMiddleware handle request respond = do

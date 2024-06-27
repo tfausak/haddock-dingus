@@ -19,11 +19,12 @@ executable haddock-dingus
   build-depends:
     base ^>=4.20.0.0,
     bytestring ^>=0.12.1.0,
+    containers ^>=0.7,
     haddock-library ^>=1.11.0,
     http-types ^>=0.12.4,
     lucid2 ^>=0.0.20240424,
     random ^>=1.2.1.2,
-    sqlite-simple ^>=0.4.19.0,
+    stm ^>=2.5.3.1,
     text ^>=2.1.1,
     wai ^>=3.2.4,
     warp ^>=3.4.1,
