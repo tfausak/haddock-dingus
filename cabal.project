@@ -2,3 +2,6 @@ packages: .
 allow-newer:
   -- https://github.com/chrisdone/lucid/issues/151
   lucid2:base,
+
+package warp
+  flags: -x509
