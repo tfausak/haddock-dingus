@@ -1,6 +1,6 @@
 cabal-version: 3.8
 name: haddock-dingus
-version: 0.2024.6.27
+version: 0.2024.6.28
 synopsis: Easily preview Haddock markup.
 description:
   Haddock Dingus easily previews Haddock markup.
