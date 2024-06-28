@@ -31,73 +31,83 @@ main = do
 
   Warp.runSettings settings $ \request respond ->
     case (Wai.requestMethod request, Wai.pathInfo request) of
-      ("GET", []) -> respond $ statusResponse Http.found302 [(Http.hLocation, "/inputs/0")]
+      ("GET", []) -> respond $ statusResponse Http.found302 $ (Http.hLocation, "/inputs/0") : defaultHeaders
       ("POST", ["inputs"]) -> do
         body <- Wai.strictRequestBody request
         let input = maybe Text.empty Encoding.decodeUtf8Lenient . Monad.join . lookup "input" . Http.parseQuery $ LazyByteString.toStrict body
             key = Hashable.hash input
         Stm.atomically . Stm.modifyTVar inputsVar $ IntMap.insert key input
-        respond $ statusResponse Http.found302 [(Http.hLocation, Encoding.encodeUtf8 . Text.pack $ Printf.printf "/inputs/%x" key)]
+        respond $ statusResponse Http.found302 $ (Http.hLocation, Encoding.encodeUtf8 . Text.pack $ Printf.printf "/inputs/%x" key) : defaultHeaders
       ("GET", ["inputs", rawKey]) -> do
         let key = Maybe.fromMaybe 0 . Read.readMaybe . mappend "0x" $ Text.unpack rawKey :: Int
         inputs <- Stm.readTVarIO inputsVar
         let contents = IntMap.findWithDefault "Not found!" key inputs
         respond
-          . Wai.responseLBS Http.ok200 [(Http.hContentType, "text/html;charset=utf-8")]
+          . Wai.responseLBS Http.ok200 ((Http.hContentType, "text/html;charset=utf-8") : defaultHeaders)
           . H.renderBS
-          . H.doctypehtml_
           $ do
-            H.head_ $ do
-              H.title_ "Haddock Dingus"
-              H.link_
-                [ H.crossorigin_ "anonymous",
-                  H.href_ "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
-                  H.integrity_ "sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",
-                  H.rel_ "stylesheet"
-                ]
-              H.script_
-                [ H.async_ "",
-                  H.crossorigin_ "anonymous",
-                  H.id_ "MathJax-script",
-                  H.integrity_ "sha384-Wuix6BuhrWbjDBs24bXrjf4ZQ5aFeFWBuKkFekO2t8xFU0iNaLQfp2K6/1Nxveei",
-                  H.src_ "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
-                ]
-                Text.empty
-            H.body_ $ do
-              H.header_ [H.class_ "bg-dark mb-3 navbar"] $ do
-                H.div_ [H.class_ "container"] $ do
-                  H.a_ [H.class_ "navbar-brand text-light", H.href_ "/"] "Haddock Dingus"
-              H.main_ [H.class_ "my-3"] $ do
-                H.div_ [H.class_ "container"] $ do
-                  H.div_ [H.class_ "row"] $ do
-                    H.div_ [H.class_ "col-lg mb-3"] $ do
-                      H.h2_ "Input"
-                      H.form_ [H.action_ "/inputs", H.method_ "post"] $ do
-                        H.textarea_
-                          [ H.class_ "font-monospace form-control mb-3",
-                            H.name_ "input",
-                            H.rows_ "10"
-                          ]
-                          $ H.toHtml contents
-                        H.button_ [H.class_ "btn btn-primary", H.type_ "submit"] "Submit"
-                    H.div_ [H.class_ "col-lg"] $ do
-                      H.h2_ "Output"
-                      H.div_ [H.class_ "card"]
-                        . H.section_ [H.class_ "card-body"]
-                        . Haddock.markup htmlMarkup
-                        . Haddock.overIdentifier (curry Just)
-                        . Haddock._doc
-                        . Haddock.parseParas Nothing
-                        $ Text.unpack contents
-              H.footer_ [H.class_ "my-3 text-secondary"] $ do
-                H.div_ [H.class_ "border-top container pt-3"] $ do
-                  "Powered by "
-                  H.a_ [H.class_ "link-secondary", H.href_ "https://github.com/tfausak/haddock-dingus"] $ do
-                    "tfausak/haddock-dingus"
-                  " version "
-                  H.toHtml $ Version.showVersion Package.version
-                  "."
-      _ -> respond $ statusResponse Http.status404 []
+            H.doctype_
+            H.html_ [H.data_ "bs-theme" "light"] $ do
+              H.head_ $ do
+                H.meta_ [H.charset_ "utf-8"]
+                H.meta_ [H.name_ "viewport", H.content_ "initial-scale = 1, width = device-width"]
+                H.title_ "Haddock Dingus"
+                H.link_
+                  [ H.crossorigin_ "anonymous",
+                    H.href_ "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
+                    H.integrity_ "sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",
+                    H.rel_ "stylesheet"
+                  ]
+                H.script_
+                  [ H.async_ "",
+                    H.crossorigin_ "anonymous",
+                    H.id_ "MathJax-script",
+                    H.integrity_ "sha384-Wuix6BuhrWbjDBs24bXrjf4ZQ5aFeFWBuKkFekO2t8xFU0iNaLQfp2K6/1Nxveei",
+                    H.src_ "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
+                  ]
+                  Text.empty
+              H.body_ $ do
+                H.header_ [H.class_ "bg-primary mb-3 navbar"] $ do
+                  H.div_ [H.class_ "container"] $ do
+                    H.a_ [H.class_ "navbar-brand text-light", H.href_ "/"] "Haddock Dingus"
+                H.main_ [H.class_ "my-3"] $ do
+                  H.div_ [H.class_ "container"] $ do
+                    H.div_ [H.class_ "row"] $ do
+                      H.div_ [H.class_ "col-lg mb-3"] $ do
+                        H.form_ [H.action_ "/inputs", H.method_ "post"] $ do
+                          H.textarea_
+                            [ H.class_ "font-monospace form-control mb-3",
+                              H.name_ "input",
+                              H.rows_ "10"
+                            ]
+                            $ H.toHtml contents
+                          H.button_ [H.class_ "btn btn-primary", H.type_ "submit"] "Submit"
+                      H.div_ [H.class_ "col-lg"] $ do
+                        H.div_ [H.class_ "card"]
+                          . H.section_ [H.class_ "card-body"]
+                          . Haddock.markup htmlMarkup
+                          . Haddock.overIdentifier (curry Just)
+                          . Haddock._doc
+                          . Haddock.parseParas Nothing
+                          $ Text.unpack contents
+                H.footer_ [H.class_ "my-3 text-secondary"] $ do
+                  H.div_ [H.class_ "border-top container pt-3"] $ do
+                    "Powered by "
+                    H.a_ [H.class_ "link-secondary", H.href_ "https://github.com/tfausak/haddock-dingus"] $ do
+                      "tfausak/haddock-dingus"
+                    " version "
+                    H.toHtml $ Version.showVersion Package.version
+                    "."
+      _ -> respond $ statusResponse Http.status404 defaultHeaders
+
+defaultHeaders :: Http.ResponseHeaders
+defaultHeaders =
+  [ ("Referrer-Policy", "no-referrer"),
+    ("Strict-Transport-Security", "max-age=31536000"),
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "DENY"),
+    ("X-XSS-Protection", "1; mode=block")
+  ]
 
 statusResponse :: Http.Status -> Http.ResponseHeaders -> Wai.Response
 statusResponse status headers =
