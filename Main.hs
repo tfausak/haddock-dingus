@@ -32,18 +32,6 @@ main = do
   Warp.runSettings settings $ \request respond ->
     case (Wai.requestMethod request, Wai.pathInfo request) of
       ("GET", []) -> respond $ statusResponse Http.found302 $ (Http.hLocation, "/inputs/0") : defaultHeaders
-      ("POST", ["format"]) -> do
-        body <- Wai.strictRequestBody request
-        respond
-          . Wai.responseLBS Http.ok200 ((Http.hContentType, "text/html;charset=utf-8") : defaultHeaders)
-          . H.renderBS
-          . Haddock.markup htmlMarkup
-          . Haddock.overIdentifier (curry Just)
-          . Haddock._doc
-          . Haddock.parseParas Nothing
-          . Text.unpack
-          . Encoding.decodeUtf8Lenient
-          $ LazyByteString.toStrict body
       ("POST", ["inputs"]) -> do
         body <- Wai.strictRequestBody request
         let input = maybe Text.empty Encoding.decodeUtf8Lenient . Monad.join . lookup "input" . Http.parseQuery $ LazyByteString.toStrict body
@@ -94,14 +82,14 @@ main = do
                             ]
                             $ H.toHtml contents
                           H.button_ [H.class_ "btn btn-primary", H.type_ "submit"] "Submit"
-                      H.div_ [H.class_ "col-lg"]
-                        . H.div_ [H.class_ "card"]
-                        . H.section_ [H.class_ "card-body"]
-                        . Haddock.markup htmlMarkup
-                        . Haddock.overIdentifier (curry Just)
-                        . Haddock._doc
-                        . Haddock.parseParas Nothing
-                        $ Text.unpack contents
+                      H.div_ [H.class_ "col-lg"] $ do
+                        H.div_ [H.class_ "card"]
+                          . H.section_ [H.class_ "card-body"]
+                          . Haddock.markup htmlMarkup
+                          . Haddock.overIdentifier (curry Just)
+                          . Haddock._doc
+                          . Haddock.parseParas Nothing
+                          $ Text.unpack contents
                 H.footer_ [H.class_ "my-3 text-secondary"] $ do
                   H.div_ [H.class_ "border-top container pt-3"] $ do
                     "Powered by "
