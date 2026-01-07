@@ -170,7 +170,7 @@ htmlMarkup =
       Haddock.markupString = H.toHtml,
       Haddock.markupTable = error "markupTable (impossible)",
       Haddock.markupUnorderedList = H.ul_ . foldMap H.li_,
-      Haddock.markupWarning = error "markupWarning (impossible)"
+      Haddock.markupWarning = H.div_ [H.class_ "alert alert-warning"]
     }
 
 sample :: Text.Text
