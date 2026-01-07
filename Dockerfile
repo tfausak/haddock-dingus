@@ -1,4 +1,4 @@
-FROM benz0li/ghc-musl:9.10.1
+FROM benz0li/ghc-musl:9.14-int-native
 WORKDIR /work
 COPY cabal.project haddock-dingus.cabal Main.hs /work
 RUN \
