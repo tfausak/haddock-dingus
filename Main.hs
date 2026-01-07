@@ -144,6 +144,8 @@ settings =
           )
         & Warp.setPort port
 
+
+
 renderHeaderRow :: Haddock.TableRow (H.Html ()) -> H.Html ()
 renderHeaderRow (Haddock.TableRow cells) = H.tr_ $ foldMap renderHeaderCell cells
 
