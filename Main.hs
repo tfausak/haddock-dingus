@@ -144,8 +144,6 @@ settings =
           )
         & Warp.setPort port
 
-
-
 renderHeaderRow :: Haddock.TableRow (H.Html ()) -> H.Html ()
 renderHeaderRow (Haddock.TableRow cells) = H.tr_ $ foldMap renderHeaderCell cells
 
@@ -153,11 +151,10 @@ renderHeaderCell :: Haddock.TableCell (H.Html ()) -> H.Html ()
 renderHeaderCell cell =
   let colspan = Haddock.tableCellColspan cell
       rowspan = Haddock.tableCellRowspan cell
-      attrs = concat
-        [ [H.colspan_ (Text.pack $ show colspan) | colspan > 1]
-        , [H.rowspan_ (Text.pack $ show rowspan) | rowspan > 1]
-        ]
-  in H.th_ attrs $ Haddock.tableCellContents cell
+      attrs =
+        [H.colspan_ (Text.pack $ show colspan) | colspan > 1]
+          <> [H.rowspan_ (Text.pack $ show rowspan) | rowspan > 1]
+   in H.th_ attrs $ Haddock.tableCellContents cell
 
 renderBodyRow :: Haddock.TableRow (H.Html ()) -> H.Html ()
 renderBodyRow (Haddock.TableRow cells) = H.tr_ $ foldMap renderBodyCell cells
@@ -166,11 +163,10 @@ renderBodyCell :: Haddock.TableCell (H.Html ()) -> H.Html ()
 renderBodyCell cell =
   let colspan = Haddock.tableCellColspan cell
       rowspan = Haddock.tableCellRowspan cell
-      attrs = concat
-        [ [H.colspan_ (Text.pack $ show colspan) | colspan > 1]
-        , [H.rowspan_ (Text.pack $ show rowspan) | rowspan > 1]
-        ]
-  in H.td_ attrs $ Haddock.tableCellContents cell
+      attrs =
+        [H.colspan_ (Text.pack $ show colspan) | colspan > 1]
+          <> [H.rowspan_ (Text.pack $ show rowspan) | rowspan > 1]
+   in H.td_ attrs $ Haddock.tableCellContents cell
 
 htmlMarkup :: Haddock.DocMarkupH Void.Void (Haddock.Namespace, String) (H.Html ())
 htmlMarkup =
@@ -199,9 +195,11 @@ htmlMarkup =
       Haddock.markupTable = \table ->
         H.table_ [H.class_ "table"] $ do
           Monad.unless (null $ Haddock.tableHeaderRows table) $
-            H.thead_ $ foldMap renderHeaderRow (Haddock.tableHeaderRows table)
+            H.thead_ $
+              foldMap renderHeaderRow (Haddock.tableHeaderRows table)
           Monad.unless (null $ Haddock.tableBodyRows table) $
-            H.tbody_ $ foldMap renderBodyRow (Haddock.tableBodyRows table),
+            H.tbody_ $
+              foldMap renderBodyRow (Haddock.tableBodyRows table),
       Haddock.markupUnorderedList = H.ul_ . foldMap H.li_,
       Haddock.markupWarning = H.div_ [H.class_ "alert alert-warning"]
     }
