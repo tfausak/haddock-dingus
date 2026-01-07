@@ -18,7 +18,7 @@ source-repository head
 executable haddock-dingus
   autogen-modules: Paths_haddock_dingus
   build-depends:
-    base ^>=4.22.0.0,
+    base ^>=4.21.0.0,
     bytestring ^>=0.12.2.0,
     containers ^>=0.8,
     haddock-library ^>=1.11.0,
