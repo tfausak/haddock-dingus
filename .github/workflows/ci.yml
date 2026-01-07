@@ -1,0 +1,81 @@
+name: CI
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: mkdir artifact
+      - uses: haskell/ghcup-setup@v1
+        with:
+          ghc: 9.14
+          cabal: latest
+      - run: ghc-pkg list
+      - run: cabal update
+      - run: cabal sdist --output-dir artifact
+      - run: cabal configure --jobs
+      - run: cat cabal.project.local
+      - run: cp cabal.project.local artifact
+      - run: cabal freeze
+      - run: cat cabal.project.freeze
+      - run: cp cabal.project.freeze artifact
+      - uses: actions/cache@v5
+        with:
+          key: ${{ hashFiles('cabal.project.freeze') }}
+          path: ~/.local/state/cabal
+      - run: cabal outdated --v2-freeze-file
+      - run: cabal build --only-download
+      - run: cabal build --only-dependencies
+      - run: cabal build
+      - run: cp $( cabal list-bin haddock-dingus ) artifact
+      - run: tar --create --file artifact.tar --verbose artifact
+      - uses: actions/upload-artifact@v6
+        with:
+          name: haddock-dingus-${{ github.sha }}
+          path: artifact.tar
+  cabal:
+    name: Cabal
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: cabal check
+  deploy:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  gild:
+    name: Gild
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: tfausak/cabal-gild-setup-action@v2
+      - run: cabal-gild --input haddock-dingus.cabal --mode check
+  hlint:
+    name: HLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: haskell-actions/hlint-setup@v2
+      - uses: haskell-actions/hlint-run@v2
+        with:
+          fail-on: status
+  ormolu:
+    name: Ormolu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: haskell-actions/run-ormolu@v17

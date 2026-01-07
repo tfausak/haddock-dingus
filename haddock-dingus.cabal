@@ -30,6 +30,7 @@ executable haddock-dingus
     wai ^>=3.2.4,
     warp ^>=3.4.12,
 
+  default-language: Haskell2010
   ghc-options:
     -rtsopts
     -threaded
