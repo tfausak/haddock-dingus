@@ -36,7 +36,7 @@ jobs:
       - run: cabal build
       - run: cp $( cabal list-bin haddock-dingus ) artifact
       - run: tar --create --file artifact.tar --verbose artifact
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: haddock-dingus-${{ github.sha }}
           path: artifact.tar
