@@ -194,12 +194,12 @@ htmlMarkup =
       Haddock.markupString = H.toHtml,
       Haddock.markupTable = \table ->
         H.table_ [H.class_ "table"] $ do
-          Monad.unless (null $ Haddock.tableHeaderRows table) $
-            H.thead_ $
-              foldMap renderHeaderRow (Haddock.tableHeaderRows table)
-          Monad.unless (null $ Haddock.tableBodyRows table) $
-            H.tbody_ $
-              foldMap renderBodyRow (Haddock.tableBodyRows table),
+          Monad.unless (null $ Haddock.tableHeaderRows table)
+            . H.thead_
+            $ foldMap renderHeaderRow (Haddock.tableHeaderRows table)
+          Monad.unless (null $ Haddock.tableBodyRows table)
+            . H.tbody_
+            $ foldMap renderBodyRow (Haddock.tableBodyRows table),
       Haddock.markupUnorderedList = H.ul_ . foldMap H.li_,
       Haddock.markupWarning = H.div_ [H.class_ "alert alert-warning"]
     }
