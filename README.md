@@ -1,5 +1,9 @@
 # Haddock Dingus
 
+> [!NOTE]
+> This project is archived.
+> Consider using [Scrod](https://scrod.fyi) instead.
+
 Haddock Dingus easily previews Haddock markup.
 It is named after the original [Markdown Web Dingus][1].
 You can find it at [haddock-dingus.fly.dev][2].
