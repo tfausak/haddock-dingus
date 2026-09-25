@@ -208,7 +208,9 @@ sample :: Text.Text
 sample =
   Text.pack $
     unlines
-      [ "= Haddock Markup",
+      [ "Note: This project is archived. Consider using [Scrod](https://scrod.fyi) instead.",
+        "",
+        "= Haddock Markup",
         "",
         "This sample is meant to showcase many of Haddock's common features. It is not meant to be exhaustive. Consult [Haddock's documentation](https://haskell-haddock.readthedocs.io/latest/) for more information.",
         "",
